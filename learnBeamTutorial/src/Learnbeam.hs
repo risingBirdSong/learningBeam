@@ -113,3 +113,12 @@ addMoreUseres = do
                     , User "james@oreily.com" "James" "O'Reily" "b4cc344d25a2efe540adbf2678e2304c" {- james -}
                     , User "sam@sophitz.com" "Sam" "Sophitz" "332532dcfaa1cbf61e2a266bd723612c" {- sam -}
                     , User "sam@jely.com" "Sam" "Jely" "332532dcfaa1cbf61e2a266bd723612c" {- sam -} ]
+
+
+usersByName = do 
+    conn <- open "shoppingcart1.db"
+    let numberOfUsersByName = aggregate_ (\u -> (group_ (_userFirstName u), as_ @Int32 countAll_)) $
+                          all_ (_shoppingCartUsers shoppingCartDb)
+    runBeamSqliteDebug putStrLn conn $ do
+    countedByName <- runSelectReturningList $ select numberOfUsersByName
+    mapM_ (liftIO . putStrLn . show) countedByName
