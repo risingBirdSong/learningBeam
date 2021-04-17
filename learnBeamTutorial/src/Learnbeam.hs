@@ -45,10 +45,11 @@ instance Table UserT where
    data PrimaryKey UserT f = UserId (Columnar f Text) deriving (Generic, Beamable)
    primaryKey = UserId . _userEmail
 
-data ShoppingCartDb f = ShoppingCartDb
-                      { _shoppingCartUsers :: f (TableEntity UserT) }
-                        deriving (Generic, Database be)
 
+data ShoppingCartDb f = ShoppingCartDb
+                      { _shoppingCartUsers         :: f (TableEntity UserT)
+                      , _shoppingCartUserAddresses :: f (TableEntity AddressT) }
+                        deriving (Generic, Database be)
 
 
 mainInsert = do 
@@ -61,7 +62,17 @@ mainInsert = do
     return ()
 
 shoppingCartDb :: DatabaseSettings be ShoppingCartDb
-shoppingCartDb = defaultDbSettings
+shoppingCartDb = defaultDbSettings `withDbModification`
+                 dbModification {
+                   _shoppingCartUserAddresses =
+                     setEntityName "addresses" <>
+                     modifyTableFields
+                       tableModification {
+                         _addressLine1 = fieldNamed "address1",
+                         _addressLine2 = fieldNamed "address2"
+                       }
+                 }
+
 
 -- notice ->
 -- A) because of overloaded strings, what looks like strings are actually text
@@ -122,3 +133,28 @@ usersByName = do
     runBeamSqliteDebug putStrLn conn $ do
     countedByName <- runSelectReturningList $ select numberOfUsersByName
     mapM_ (liftIO . putStrLn . show) countedByName
+
+
+-- https://haskell-beam.github.io/beam/tutorials/tutorial2/
+
+-- Above, we used the C constructor instead of Columnar for each column. C is a type synonym for Columnar,
+--  and some find it reduces the syntactic overhead of model declaration.
+
+data AddressT f = Address
+                { _addressId    :: C f Int32
+                , _addressLine1 :: C f Text
+                , _addressLine2 :: C f (Maybe Text)
+                , _addressCity  :: C f Text
+                , _addressState :: C f Text
+                , _addressZip   :: C f Text
+
+                , _addressForUser :: PrimaryKey UserT f }
+                  deriving (Generic, Beamable)
+type Address = AddressT Identity
+deriving instance Show (PrimaryKey UserT Identity)
+deriving instance Show Address
+
+instance Table AddressT where
+    data PrimaryKey AddressT f = AddressId (Columnar f Int32) deriving (Generic, Beamable)
+    primaryKey = AddressId . _addressId
+type AddressId = PrimaryKey AddressT Identity -- For convenience
