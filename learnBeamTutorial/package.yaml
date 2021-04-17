@@ -24,9 +24,14 @@ dependencies:
 - beam-core
 - beam-postgres
 - beam-sqlite
+- sqlite-simple
+- text
 
 library:
   source-dirs: src
+  # default-extensions:
+    
+
 
 executables:
   learnBeamTutorial-exe:
