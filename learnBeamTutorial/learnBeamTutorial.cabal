@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 11d520fc253658df776416b54b8c60ed2252335072bc0e5eaeb2d4df482e3f83
+-- hash: 104420f8cd2e8b6244199f15096b5ecea675a49be110de9caf24c427bb2366a3
 
 name:           learnBeamTutorial
 version:        0.1.0.0
@@ -42,6 +42,7 @@ library
     , postgresql-simple
     , sqlite-simple
     , text
+    , vector
   default-language: Haskell2010
 
 executable learnBeamTutorial-exe
@@ -61,6 +62,7 @@ executable learnBeamTutorial-exe
     , postgresql-simple
     , sqlite-simple
     , text
+    , vector
   default-language: Haskell2010
 
 test-suite learnBeamTutorial-test
@@ -81,4 +83,5 @@ test-suite learnBeamTutorial-test
     , postgresql-simple
     , sqlite-simple
     , text
+    , vector
   default-language: Haskell2010

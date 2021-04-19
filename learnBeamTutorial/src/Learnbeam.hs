@@ -60,26 +60,26 @@ data ShoppingCartDb f = ShoppingCartDb
 
 
 
-insertExamplePSQL = do 
-    conn <- connect defaultConnectInfo { connectPort = 5433}
-    runBeamPostgresDebug putStrLn {- for debug output -} conn $ runInsert $
-        insert (_transactions transactionDb) $
-        insertValues [  transactionExample {- james -}]
+-- insertExamplePSQL = do 
+--     conn <- connect defaultConnectInfo { connectPort = 5433}
+--     runBeamPostgresDebug putStrLn {- for debug output -} conn $ runInsert $
+--         insert (_transactions transactionDb) $
+--         insertValues [  transactionExample {- james -}]
 
 
-mainPSQL = do
-    conn <- connect defaultConnectInfo { connectPort = 5433}
-    file <- readFile "src/someCSVexample.csv" 
-    let parsed = case (decode NoHeader file :: Either String (Vector TransactionCSV)) of 
-                        (Right values) -> toList values
-                        -- if something goes wrong, return an empty list to shorcircuit the following logic
-                        (Left err) ->  [] 
-    -- conn <- open "transactionDb1.db"
-    let converted = take 1000 $ map convertTransaction parsed
-    runBeamPostgres conn $ runInsert $
-        insert (_transactions transactionDb) $
-        insertValues converted
-    return ()
+-- mainPSQL = do
+--     conn <- connect defaultConnectInfo { connectPort = 5433}
+--     file <- readFile "src/someCSVexample.csv" 
+--     let parsed = case (decode NoHeader file :: Either String (V.Vector TransactionCSV)) of 
+--                         (Right values) -> toList values
+--                         -- if something goes wrong, return an empty list to shorcircuit the following logic
+--                         (Left err) ->  [] 
+--     -- conn <- open "transactionDb1.db"
+--     let converted = take 1000 $ map convertTransaction parsed
+--     runBeamPostgres conn $ runInsert $
+--         insert (_transactions transactionDb) $
+--         insertValues converted
+--     return ()
 
 mainInsert = do 
     conn <- open "shoppingcart1.db"
