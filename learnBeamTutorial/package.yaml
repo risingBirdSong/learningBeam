@@ -26,10 +26,13 @@ dependencies:
 - beam-sqlite
 - sqlite-simple
 - text
+- cassava
+- beam-postgres
+- postgresql-simple
 
 library:
   source-dirs: src
-  # default-extensions:
+  # default-extensions: 
     
 
 

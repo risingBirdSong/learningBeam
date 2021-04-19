@@ -1,7 +1,11 @@
 {-# LANGUAGE DeriveGeneric , GADTs , OverloadedStrings , FlexibleContexts , FlexibleInstances , TypeFamilies , TypeApplications , DeriveAnyClass #-}
 {-# LANGUAGE StandaloneDeriving , TypeSynonymInstances , MultiParamTypeClasses #-}
+{-#  LANGUAGE ImpredicativeTypes #-}
+
 module Learnbeam where
 import Database.Beam
+import Database.PostgreSQL.Simple
+import Database.Beam.Postgres
 import Database.Beam.Sqlite
 import GHC.Int
 import Data.Text (Text)
@@ -86,15 +90,15 @@ checkDb = do
     conn <- open "shoppingcart1.db"
     let allUsers = all_ (_shoppingCartUsers shoppingCartDb)
     runBeamSqliteDebug putStrLn conn $ do
-    users <- runSelectReturningList $ select allUsers
-    mapM_ (liftIO . putStrLn . show) users
+        users <- runSelectReturningList $ select allUsers
+        mapM_ (liftIO . putStrLn . show) users
 
 getOrdered = do 
     conn <- open "shoppingcart1.db"
     let sortUsersByFirstName = orderBy_ (\u -> (asc_ (_userFirstName u), desc_ (_userLastName u))) (all_ (_shoppingCartUsers shoppingCartDb))
     runBeamSqliteDebug putStrLn conn $ do
-    users <- runSelectReturningList $ select sortUsersByFirstName
-    mapM_ (liftIO . putStrLn . show) users
+        users <- runSelectReturningList $ select sortUsersByFirstName
+        mapM_ (liftIO . putStrLn . show) users
 
 takeAndDropEquivalent = do 
     conn <- open "shoppingcart1.db"
@@ -102,16 +106,16 @@ takeAndDropEquivalent = do
                    orderBy_ (asc_ . _userFirstName) $
                    all_ (_shoppingCartUsers shoppingCartDb)
     runBeamSqliteDebug putStrLn conn $ do
-    users <- runSelectReturningList (select boundedQuery)
-    mapM_ (liftIO . putStrLn . show) users
+        users <- runSelectReturningList (select boundedQuery)
+        mapM_ (liftIO . putStrLn . show) users
 
 
 countUsers = do
     conn <- open "shoppingcart1.db"
     let userCount = aggregate_ (\u -> as_ @GHC.Int.Int32 countAll_) (all_ (_shoppingCartUsers shoppingCartDb))
     runBeamSqliteDebug putStrLn conn $ do
-    Just c <- runSelectReturningOne $ select userCount
-    liftIO $ putStrLn ("We have " ++ show c ++ " users in the database")
+        Just c <- runSelectReturningOne $ select userCount
+        liftIO $ putStrLn ("We have " ++ show c ++ " users in the database")
 
 
 addMoreUseres = do 
@@ -131,8 +135,8 @@ usersByName = do
     let numberOfUsersByName = aggregate_ (\u -> (group_ (_userFirstName u), as_ @Int32 countAll_)) $
                           all_ (_shoppingCartUsers shoppingCartDb)
     runBeamSqliteDebug putStrLn conn $ do
-    countedByName <- runSelectReturningList $ select numberOfUsersByName
-    mapM_ (liftIO . putStrLn . show) countedByName
+        countedByName <- runSelectReturningList $ select numberOfUsersByName
+        mapM_ (liftIO . putStrLn . show) countedByName
 
 
 -- https://haskell-beam.github.io/beam/tutorials/tutorial2/
@@ -158,3 +162,17 @@ instance Table AddressT where
     data PrimaryKey AddressT f = AddressId (Columnar f Int32) deriving (Generic, Beamable)
     primaryKey = AddressId . _addressId
 type AddressId = PrimaryKey AddressT Identity -- For convenience
+
+Address (LensFor addressId)    (LensFor addressLine1)
+        (LensFor addressLine2) (LensFor addressCity)
+        (LensFor addressState) (LensFor addressZip)
+        (UserId (LensFor addressForUserId)) =
+        tableLenses
+
+User (LensFor userEmail)    (LensFor userFirstName)
+     (LensFor userLastName) (LensFor userPassword) =
+     tableLenses
+
+ShoppingCartDb (TableLens shoppingCartUsers)
+               (TableLens shoppingCartUserAddresses) =
+               dbLenses
