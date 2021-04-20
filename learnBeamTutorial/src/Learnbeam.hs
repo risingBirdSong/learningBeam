@@ -233,9 +233,19 @@ User (LensFor userEmail)    (LensFor userFirstName)
      (LensFor userLastName) (LensFor userPassword) =
      tableLenses
 
+
+
 ShoppingCartDb (TableLens shoppingCartUsers)
                (TableLens shoppingCartUserAddresses) =
                dbLenses
+
+
+getUserEmails = do
+    conn <- open "shoppingcart2.db"
+    addresses <- runBeamSqliteDebug putStrLn conn $
+                runSelectReturningList $
+                select $ fmap _userEmail (all_ (shoppingCartDb ^. shoppingCartUsers))
+    mapM_ print addresses
 
 getUserAddresses = do
     conn <- open "shoppingcart2.db"
