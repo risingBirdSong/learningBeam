@@ -30,6 +30,7 @@ dependencies:
 - cassava
 - beam-postgres
 - postgresql-simple
+- lens
 
 library:
   source-dirs: src

@@ -1,7 +1,8 @@
 {-# LANGUAGE DeriveGeneric , GADTs , OverloadedStrings , FlexibleContexts , FlexibleInstances , TypeFamilies , TypeApplications , DeriveAnyClass #-}
 {-# LANGUAGE StandaloneDeriving , TypeSynonymInstances , MultiParamTypeClasses #-}
-{-#  LANGUAGE ImpredicativeTypes #-}
+{-#  LANGUAGE ImpredicativeTypes , NoMonomorphismRestriction #-}
 
+{-# OPTIONS_GHC -Wno-deferred-type-errors #-}
 module Learnbeam where
 import Database.Beam
 import Database.PostgreSQL.Simple
@@ -11,6 +12,8 @@ import GHC.Int
 import qualified Data.Vector as V
 
 import Data.Text (Text)
+-- import Lens.Micro
+import Control.Lens
 
 import Database.SQLite.Simple
 
@@ -22,7 +25,6 @@ import Database.SQLite.Simple
 --                     , User "betty@example.com" "Betty" "Jones" "82b054bd83ffad9b6cf8bdb98ce3cc2f" {- betty -}
 --                     , User "sam@example.com" "Sam" "Taylor" "332532dcfaa1cbf61e2a266bd723612c" {- sam -} ]
 --     return ()
-
 
 
 
@@ -81,14 +83,63 @@ data ShoppingCartDb f = ShoppingCartDb
 --         insertValues converted
 --     return ()
 
-mainInsert = do 
-    conn <- open "shoppingcart1.db"
-    runBeamSqliteDebug putStrLn {- for debug output -} conn $ runInsert $
+-- mainInsert = do 
+--     conn <- open "shoppingcart2.db"
+--     runBeamSqliteDebug putStrLn {- for debug output -} conn $ runInsert $
+--         insert (_shoppingCartUsers shoppingCartDb) $
+--         insertValues [ User "james@example.com" "James" "Smith" "b4cc344d25a2efe540adbf2678e2304c" {- james -}
+--                     , User "betty@example.com" "Betty" "Jones" "82b054bd83ffad9b6cf8bdb98ce3cc2f" {- betty -}
+--                     , User "sam@example.com" "Sam" "Taylor" "332532dcfaa1cbf61e2a266bd723612c" {- sam -} ]
+--     return ()
+
+
+addMoreUseres = do 
+    conn <- open "shoppingcart2.db"
+    runBeamSqliteDebug putStrLn conn $
+        runInsert $
         insert (_shoppingCartUsers shoppingCartDb) $
-        insertValues [ User "james@example.com" "James" "Smith" "b4cc344d25a2efe540adbf2678e2304c" {- james -}
-                    , User "betty@example.com" "Betty" "Jones" "82b054bd83ffad9b6cf8bdb98ce3cc2f" {- betty -}
-                    , User "sam@example.com" "Sam" "Taylor" "332532dcfaa1cbf61e2a266bd723612c" {- sam -} ]
-    return ()
+        insertValues [ User "james@pallo.com" "James" "Pallo" "b4cc344d25a2efe540adbf2678e2304c" {- james -}
+                    , User "betty@sims.com" "Betty" "Sims" "82b054bd83ffad9b6cf8bdb98ce3cc2f" {- betty -}
+                    , User "james@oreily.com" "James" "O'Reily" "b4cc344d25a2efe540adbf2678e2304c" {- james -}
+                    , User "sam@sophitz.com" "Sam" "Sophitz" "332532dcfaa1cbf61e2a266bd723612c" {- sam -}
+                    , User "sam@jely.com" "Sam" "Jely" "332532dcfaa1cbf61e2a266bd723612c" {- sam -} ]
+
+data AddressT f = Address
+                { _addressId    :: C f Int32
+                , _addressLine1 :: C f Text
+                , _addressLine2 :: C f (Maybe Text)
+                , _addressCity  :: C f Text
+                , _addressState :: C f Text
+                , _addressZip   :: C f Text
+
+                , _addressForUser :: PrimaryKey UserT f }
+                  deriving (Generic, Beamable)
+type Address = AddressT Identity
+deriving instance Show (PrimaryKey UserT Identity)
+deriving instance Show Address
+
+-- https://wiki.haskell.org/Monomorphism_restriction
+
+--  • Couldn't match type ‘QGenExpr ctxt0 be2 s0 a0’ with ‘Int32’
+--       Expected type: C Identity Int32
+--         Actual type: QGenExpr ctxt0 be2 s0 a0
+--     • In the first argument of ‘Address’, namely ‘(default_)’
+
+workingWithRelations = do 
+    conn <- open "shoppingcart2.db"
+    let james = User "james@example.com" "James" "Smith" "b4cc344d25a2efe540adbf2678e2304c"
+        betty = User "betty@example.com" "Betty" "Jones" "82b054bd83ffad9b6cf8bdb98ce3cc2f"
+        sam = User "sam@example.com" "Sam" "Taylor" "332532dcfaa1cbf61e2a266bd723612c"
+    runBeamSqliteDebug putStrLn conn $ runInsert $
+        insert (_shoppingCartUsers shoppingCartDb) $
+        insertValues [ james, betty, sam ]
+    let addresses = [ Address ( default_ ) (val_ "123 Little Street") (val_ Nothing) (val_ "Boston") (val_ "MA") (val_ "12345") (pk james)
+                , Address default_ (val_ "222 Main Street") (val_ (Just "Ste 1")) (val_ "Houston") (val_ "TX") (val_ "8888") (pk betty)
+                , Address default_ (val_ "9999 Residence Ave") (val_ Nothing) (val_ "Sugarland") (val_ "TX") (val_ "8989") (pk betty) ]
+    runBeamSqliteDebug putStrLn conn $ runInsert $
+        insert (_shoppingCartUserAddresses shoppingCartDb) $
+        insertExpressions addresses
+
 
 shoppingCartDb :: DatabaseSettings be ShoppingCartDb
 shoppingCartDb = defaultDbSettings `withDbModification`
@@ -143,18 +194,6 @@ countUsers = do
         liftIO $ putStrLn ("We have " ++ show c ++ " users in the database")
 
 
-addMoreUseres = do 
-    conn <- open "shoppingcart1.db"
-    runBeamSqliteDebug putStrLn conn $
-        runInsert $
-        insert (_shoppingCartUsers shoppingCartDb) $
-        insertValues [ User "james@pallo.com" "James" "Pallo" "b4cc344d25a2efe540adbf2678e2304c" {- james -}
-                    , User "betty@sims.com" "Betty" "Sims" "82b054bd83ffad9b6cf8bdb98ce3cc2f" {- betty -}
-                    , User "james@oreily.com" "James" "O'Reily" "b4cc344d25a2efe540adbf2678e2304c" {- james -}
-                    , User "sam@sophitz.com" "Sam" "Sophitz" "332532dcfaa1cbf61e2a266bd723612c" {- sam -}
-                    , User "sam@jely.com" "Sam" "Jely" "332532dcfaa1cbf61e2a266bd723612c" {- sam -} ]
-
-
 usersByName = do 
     conn <- open "shoppingcart1.db"
     let numberOfUsersByName = aggregate_ (\u -> (group_ (_userFirstName u), as_ @Int32 countAll_)) $
@@ -169,19 +208,7 @@ usersByName = do
 -- Above, we used the C constructor instead of Columnar for each column. C is a type synonym for Columnar,
 --  and some find it reduces the syntactic overhead of model declaration.
 
-data AddressT f = Address
-                { _addressId    :: C f Int32
-                , _addressLine1 :: C f Text
-                , _addressLine2 :: C f (Maybe Text)
-                , _addressCity  :: C f Text
-                , _addressState :: C f Text
-                , _addressZip   :: C f Text
 
-                , _addressForUser :: PrimaryKey UserT f }
-                  deriving (Generic, Beamable)
-type Address = AddressT Identity
-deriving instance Show (PrimaryKey UserT Identity)
-deriving instance Show Address
 
 instance Table AddressT where
     data PrimaryKey AddressT f = AddressId (Columnar f Int32) deriving (Generic, Beamable)
@@ -194,10 +221,20 @@ Address (LensFor addressId)    (LensFor addressLine1)
         (UserId (LensFor addressForUserId)) =
         tableLenses
 
-User (LensFor userEmail)    (LensFor userFirstName)
-     (LensFor userLastName) (LensFor userPassword) =
-     tableLenses
+-- User (LensFor userEmail)    (LensFor userFirstName)
+--      (LensFor userLastName) (LensFor userPassword) =
+--      tableLenses
 
-ShoppingCartDb (TableLens shoppingCartUsers)
-               (TableLens shoppingCartUserAddresses) =
-               dbLenses
+-- ShoppingCartDb (TableLens shoppingCartUsers)
+--                (TableLens shoppingCartUserAddresses) =
+--                dbLenses
+
+-- getAColum = do
+--     conn <- open "shoppingcart2.db"
+--     addresses <- runBeamSqliteDebug putStrLn conn $
+--                 runSelectReturningList $
+--                 select (all_ (shoppingCartDb ^. shoppingCartUserAddresses))
+--     mapM_ print addresses
+
+myexample :: String
+myexample = "hello world"
