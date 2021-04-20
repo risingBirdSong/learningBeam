@@ -229,20 +229,27 @@ Address (LensFor addressId)    (LensFor addressLine1)
         (UserId (LensFor addressForUserId)) =
         tableLenses
 
--- User (LensFor userEmail)    (LensFor userFirstName)
---      (LensFor userLastName) (LensFor userPassword) =
---      tableLenses
+User (LensFor userEmail)    (LensFor userFirstName)
+     (LensFor userLastName) (LensFor userPassword) =
+     tableLenses
 
--- ShoppingCartDb (TableLens shoppingCartUsers)
---                (TableLens shoppingCartUserAddresses) =
---                dbLenses
+ShoppingCartDb (TableLens shoppingCartUsers)
+               (TableLens shoppingCartUserAddresses) =
+               dbLenses
 
--- getAColum = do
---     conn <- open "shoppingcart2.db"
---     addresses <- runBeamSqliteDebug putStrLn conn $
---                 runSelectReturningList $
---                 select (all_ (shoppingCartDb ^. shoppingCartUserAddresses))
---     mapM_ print addresses
+getUserAddresses = do
+    conn <- open "shoppingcart2.db"
+    addresses <- runBeamSqliteDebug putStrLn conn $
+                runSelectReturningList $
+                select (all_ (shoppingCartDb ^. shoppingCartUserAddresses))
+    mapM_ print addresses
+
+getUsers = do 
+    conn <- open "shoppingcart2.db"
+    users <- runBeamSqlite conn $
+                 runSelectReturningList $
+                select (all_ (shoppingCartDb ^. shoppingCartUsers))
+    mapM_ print users
 
 myexample :: String
 myexample = "hello world"
