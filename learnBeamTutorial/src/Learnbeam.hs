@@ -251,5 +251,35 @@ getUsers = do
                 select (all_ (shoppingCartDb ^. shoppingCartUsers))
     mapM_ print users
 
+
+allPairsDo = do 
+    conn <- open "shoppingcart2.db"
+    allPairs <- runBeamSqliteDebug putStrLn conn $
+                runSelectReturningList $ select $ do
+                user <- all_ (shoppingCartDb ^. shoppingCartUsers)
+                address <- all_ (shoppingCartDb ^. shoppingCartUserAddresses)
+                return (user, address)
+    mapM_ print allPairs
+
+usersAndRelatedAddressesDo = do
+    conn <- open "shoppingcart2.db"
+    usersAndRelatedAddresses <-  runBeamSqliteDebug putStrLn conn $
+        runSelectReturningList $ select $ do
+            user <- all_ (shoppingCartDb ^. shoppingCartUsers)
+            address <- all_ (shoppingCartDb ^. shoppingCartUserAddresses)
+            guard_ (address ^. addressForUserId ==. user ^. userEmail)
+            pure (user, address)
+    mapM_ print usersAndRelatedAddresses
+
+usersAndRelatedAddressesUsingReferencesDo = do
+    conn <- open "shoppingcart2.db"
+    usersAndRelatedAddressesUsingReferences <- runBeamSqliteDebug putStrLn conn $
+            runSelectReturningList $ select $
+                do  user <- all_ (shoppingCartDb ^. shoppingCartUsers)
+                    address <- all_ (shoppingCartDb ^. shoppingCartUserAddresses)
+                    guard_ (_addressForUser address `references_` user)
+                    pure (user, address)
+    mapM_ print usersAndRelatedAddressesUsingReferences
+
 myexample :: String
 myexample = "hello world"
