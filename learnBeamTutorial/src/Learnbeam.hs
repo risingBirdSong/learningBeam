@@ -125,6 +125,14 @@ deriving instance Show Address
 --         Actual type: QGenExpr ctxt0 be2 s0 a0
 --     • In the first argument of ‘Address’, namely ‘(default_)’
 
+-- These lens generating functions are awesome but if you use them in a compiled Haskell module (rather than GHC), 
+-- GHC may give you odd compile errors about ambiguous types. These occur due to what's known as the monomorphism restriction.
+--  You can turn it off using the NoMonomorphismRestriction extension.
+
+-- The monomorphism restriction is part of the Haskell standard, but there has been talk about removing it in future language versions.
+-- Basically, it requires GHC to not automatically infer polymorphic types for global definitions.
+--  In this case though, polymorphic global definitions is exactly what we want.
+
 workingWithRelations = do 
     conn <- open "shoppingcart2.db"
     let james = User "james@example.com" "James" "Smith" "b4cc344d25a2efe540adbf2678e2304c"
