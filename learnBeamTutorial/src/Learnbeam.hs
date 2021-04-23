@@ -314,8 +314,6 @@ bettysAddressesDo = do
     mapM_ print bettysAddresses
 
 james = User "james@example.com" "James" "Smith" "b4cc344d25a2efe540adbf2678e2304c"
-betty = User "betty@example.com" "Betty" "Jones" "82b054bd83ffad9b6cf8bdb98ce3cc2f"
-sam = User "sam@example.com" "Sam" "Taylor" "332532dcfaa1cbf61e2a266bd723612c"
    
 -- ok its cool that this works, but james wont be defined in global scope like this so
 -- so we can look query james and assign him to a variable locally in the do function
@@ -330,16 +328,3 @@ updateJamesPasswordDo = do
             lookup_ (shoppingCartDb ^. shoppingCartUsers) (UserId "james@example.com")
     putStrLn ("James's new password is " ++ show (james ^. userPassword))
 
-myexample :: String
-myexample = "hello world"
-
-
-addressesDo = do
-    conn <- open "shoppingcart2.db"
-    let addresses = [ Address default_ (val_ "123 Little Street") (val_ Nothing) (val_ "Boston") (val_ "MA") (val_ "12345") (pk james)
-                    , Address default_ (val_ "222 Main Street") (val_ (Just "Ste 1")) (val_ "Houston") (val_ "TX") (val_ "8888") (pk betty)
-                    , Address default_ (val_ "9999 Residence Ave") (val_ Nothing) (val_ "Sugarland") (val_ "TX") (val_ "8989") (pk betty) ]
-    runBeamSqliteDebug putStrLn conn $ runInsert $
-        insert (_shoppingCartUserAddresses shoppingCartDb) $
-        insertExpressions addresses
-    return ()
