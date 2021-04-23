@@ -291,5 +291,55 @@ usersAndRelatedAddressesUsingReferencesDo = do
                     pure (user, address)
     mapM_ print usersAndRelatedAddressesUsingReferences
 
+
+usersAndRelatedAddressesUsingRelatedDo = do
+    conn <- open "shoppingcart2.db"
+    usersAndRelatedAddressesUsingRelated <-
+        runBeamSqliteDebug putStrLn conn $
+            runSelectReturningList $ select $ do
+            address <- all_ (shoppingCartDb ^. shoppingCartUserAddresses)
+            user <- related_ (shoppingCartDb ^. shoppingCartUsers) (_addressForUser address)
+            pure (user, address)
+    mapM_ print usersAndRelatedAddressesUsingRelated
+
+bettyId = UserId "betty@example.com" :: UserId
+
+bettysAddressesDo = do
+    conn <- open "shoppingcart2.db"
+    bettysAddresses <- runBeamSqliteDebug putStrLn conn $
+        runSelectReturningList $ select $
+        do address <- all_ (shoppingCartDb ^. shoppingCartUserAddresses)
+           guard_ (_addressForUser address ==. val_ bettyId)
+           pure address
+    mapM_ print bettysAddresses
+
+james = User "james@example.com" "James" "Smith" "b4cc344d25a2efe540adbf2678e2304c"
+betty = User "betty@example.com" "Betty" "Jones" "82b054bd83ffad9b6cf8bdb98ce3cc2f"
+sam = User "sam@example.com" "Sam" "Taylor" "332532dcfaa1cbf61e2a266bd723612c"
+   
+-- ok its cool that this works, but james wont be defined in global scope like this so
+-- so we can look query james and assign him to a variable locally in the do function
+-- inside of updateJamesPasswordDo the global james is on 326, the others are local
+
+updateJamesPasswordDo = do
+    conn <- open "shoppingcart2.db"
+    [james] <- runBeamSqliteDebug putStrLn conn $ do 
+        runUpdate $ save (shoppingCartDb ^. shoppingCartUsers)
+                    (james { _userPassword = "52a516ca6df436828d9c0d26e31ef704" })
+        runSelectReturningList $
+            lookup_ (shoppingCartDb ^. shoppingCartUsers) (UserId "james@example.com")
+    putStrLn ("James's new password is " ++ show (james ^. userPassword))
+
 myexample :: String
 myexample = "hello world"
+
+
+addressesDo = do
+    conn <- open "shoppingcart2.db"
+    let addresses = [ Address default_ (val_ "123 Little Street") (val_ Nothing) (val_ "Boston") (val_ "MA") (val_ "12345") (pk james)
+                    , Address default_ (val_ "222 Main Street") (val_ (Just "Ste 1")) (val_ "Houston") (val_ "TX") (val_ "8888") (pk betty)
+                    , Address default_ (val_ "9999 Residence Ave") (val_ Nothing) (val_ "Sugarland") (val_ "TX") (val_ "8989") (pk betty) ]
+    runBeamSqliteDebug putStrLn conn $ runInsert $
+        insert (_shoppingCartUserAddresses shoppingCartDb) $
+        insertExpressions addresses
+    return ()
