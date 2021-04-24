@@ -31,6 +31,7 @@ dependencies:
 - beam-postgres
 - postgresql-simple
 - lens
+- time 
 
 library:
   source-dirs: src

@@ -14,6 +14,8 @@ import qualified Data.Vector as V
 import Data.Text (Text)
 -- import Lens.Micro
 import Control.Lens
+import Data.Time
+
 
 import Database.SQLite.Simple
 
@@ -69,28 +71,16 @@ data ShoppingCartDb f = ShoppingCartDb
 --         insertValues [  transactionExample {- james -}]
 
 
--- mainPSQL = do
---     conn <- connect defaultConnectInfo { connectPort = 5433}
---     file <- readFile "src/someCSVexample.csv" 
---     let parsed = case (decode NoHeader file :: Either String (V.Vector TransactionCSV)) of 
---                         (Right values) -> toList values
---                         -- if something goes wrong, return an empty list to shorcircuit the following logic
---                         (Left err) ->  [] 
---     -- conn <- open "transactionDb1.db"
---     let converted = take 1000 $ map convertTransaction parsed
---     runBeamPostgres conn $ runInsert $
---         insert (_transactions transactionDb) $
---         insertValues converted
---     return ()
 
--- mainInsert = do 
---     conn <- open "shoppingcart2.db"
---     runBeamSqliteDebug putStrLn {- for debug output -} conn $ runInsert $
---         insert (_shoppingCartUsers shoppingCartDb) $
---         insertValues [ User "james@example.com" "James" "Smith" "b4cc344d25a2efe540adbf2678e2304c" {- james -}
---                     , User "betty@example.com" "Betty" "Jones" "82b054bd83ffad9b6cf8bdb98ce3cc2f" {- betty -}
---                     , User "sam@example.com" "Sam" "Taylor" "332532dcfaa1cbf61e2a266bd723612c" {- sam -} ]
---     return ()
+
+mainInsert = do 
+    conn <- open "shoppingcart2.db"
+    runBeamSqliteDebug putStrLn {- for debug output -} conn $ runInsert $
+        insert (_shoppingCartUsers shoppingCartDb) $
+        insertValues [ User "james@example.com" "James" "Smith" "b4cc344d25a2efe540adbf2678e2304c" {- james -}
+                    , User "betty@example.com" "Betty" "Jones" "82b054bd83ffad9b6cf8bdb98ce3cc2f" {- betty -}
+                    , User "sam@example.com" "Sam" "Taylor" "332532dcfaa1cbf61e2a266bd723612c" {- sam -} ]
+    return ()
 
 
 addMoreUseres = do 
@@ -327,4 +317,7 @@ updateJamesPasswordDo = do
         runSelectReturningList $
             lookup_ (shoppingCartDb ^. shoppingCartUsers) (UserId "james@example.com")
     putStrLn ("James's new password is " ++ show (james ^. userPassword))
+
+
+
 
