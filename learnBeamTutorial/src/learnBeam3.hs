@@ -1,7 +1,7 @@
 
 {-# LANGUAGE DeriveGeneric , GADTs , OverloadedStrings , FlexibleContexts , FlexibleInstances , TypeFamilies , TypeApplications , DeriveAnyClass #-}
 {-# LANGUAGE StandaloneDeriving , TypeSynonymInstances , MultiParamTypeClasses #-}
-{-#  LANGUAGE ImpredicativeTypes , NoMonomorphismRestriction #-}
+{-#  LANGUAGE ImpredicativeTypes , NoMonomorphismRestriction, UndecidableInstances #-}
 
 {-# OPTIONS_GHC -Wno-deferred-type-errors #-}
 module Learnbeam where
@@ -10,9 +10,11 @@ import Database.Beam
 import Database.Beam.Postgres
 import Database.Beam.Sqlite
 import GHC.Int
+import Database.Beam.Backend.SQL
+
 import qualified Data.Vector as V
 
-import Data.Text (Text)
+import Data.Text
 -- import Lens.Micro
 import Control.Lens
 import Data.Time
@@ -224,7 +226,44 @@ insertA = do
             [redBall, mathTextbook, introToHaskell, suitcase] <-
                 runInsertReturningList $
                 insertReturning (shoppingCartDb ^. shoppingCartProducts) $ insertExpressions products
-
             pure ( jamesAddress1, bettyAddress1, bettyAddress2, redBall, mathTextbook, introToHaskell, suitcase )
     return  ()
     
+
+-- Marshalling a custom type
+
+bettyShippingInfoA = do
+    conn <- open "shoppingcart3.db"
+    bettyShippingInfo <- runBeamSqliteDebug putStrLn conn $ do
+        [bettyShippingInfo] <- runInsertReturningList $
+            insertReturning (shoppingCartDb ^. shoppingCartShippingInfos) $
+            insertExpressions [ ShippingInfo default_ (val_ USPS) (val_ "12345790ABCDEFGHI") ]
+        pure bettyShippingInfo
+    return ()
+
+-- ### expected error with bettyShippingInfoA HasSqlValueSyntax before we include HasSqlValueSyntax be ShippingCarrier instance ###
+
+-- <interactive>:845:7: error:
+--     • No instance for (FromBackendRow Sqlite ShippingCarrier)
+--         arising from a use of ‘runInsertReturningList’
+--     • In a stmt of a 'do' block:
+--         [bettyShippingInfo] <- runInsertReturningList
+--                                  $ insertReturning (shoppingCartDb ^. shoppingCartShippingInfos)
+--                                      $ insertExpressions
+--                                          [ShippingInfo
+--                                             default_ (val_ USPS) (val_ "12345790ABCDEFGHI")]
+-- ...
+
+-- <interactive>:847:50: error:
+--     • No instance for (Database.Beam.Backend.SQL.SQL92.HasSqlValueSyntax
+--                          Database.Beam.Sqlite.Syntax.SqliteValueSyntax ShippingCarrier)
+
+
+
+instance HasSqlValueSyntax be String => HasSqlValueSyntax be ShippingCarrier where
+  sqlValueSyntax = autoSqlValueSyntax
+
+
+
+instance FromBackendRow Sqlite ShippingCarrier where
+  fromBackendRow = read . unpack <$> fromBackendRow
