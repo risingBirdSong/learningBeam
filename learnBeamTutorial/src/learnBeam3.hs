@@ -214,6 +214,11 @@ insertA = do
                , Product default_ (val_ "Math Textbook") (val_ "Contains a lot of important math theorems and formulae") (val_ 2500)
                , Product default_ (val_ "Intro to Haskell") (val_ "Learn the best programming language in the world") (val_ 3000)
                , Product default_ (val_ "Suitcase") "A hard durable suitcase" 15000 ]
+    bettyShippingInfo <- runBeamSqliteDebug putStrLn conn $ do
+        [bettyShippingInfo] <- runInsertReturningList $
+            insertReturning (shoppingCartDb ^. shoppingCartShippingInfos) $
+            insertExpressions [ ShippingInfo default_ (val_ USPS) (val_ "12345790ABCDEFGHI") ]
+        pure bettyShippingInfo
 
     (jamesAddress1, bettyAddress1, bettyAddress2, redBall, mathTextbook, introToHaskell, suitcase) <- runBeamSqliteDebug putStrLn conn $ do
             runInsert $ insert (shoppingCartDb ^. shoppingCartUsers) $
@@ -227,6 +232,14 @@ insertA = do
                 runInsertReturningList $
                 insertReturning (shoppingCartDb ^. shoppingCartProducts) $ insertExpressions products
             pure ( jamesAddress1, bettyAddress1, bettyAddress2, redBall, mathTextbook, introToHaskell, suitcase )
+    
+    [ jamesOrder1, bettyOrder1, jamesOrder2 ] <- runBeamSqliteDebug putStrLn conn $ do
+        runInsertReturningList $ insertReturning (shoppingCartDb ^. shoppingCartOrders) $
+            insertExpressions $
+                [ Order default_ currentTimestamp_ (val_ (pk james)) (val_ (pk jamesAddress1)) nothing_
+                , Order default_ currentTimestamp_ (val_ (pk betty)) (val_ (pk bettyAddress1)) (just_ (val_ (pk bettyShippingInfo)))
+                , Order default_ currentTimestamp_ (val_ (pk james)) (val_ (pk jamesAddress1)) nothing_ ]
+
     return  ()
     
 
@@ -234,11 +247,7 @@ insertA = do
 
 bettyShippingInfoA = do
     conn <- open "shoppingcart3.db"
-    bettyShippingInfo <- runBeamSqliteDebug putStrLn conn $ do
-        [bettyShippingInfo] <- runInsertReturningList $
-            insertReturning (shoppingCartDb ^. shoppingCartShippingInfos) $
-            insertExpressions [ ShippingInfo default_ (val_ USPS) (val_ "12345790ABCDEFGHI") ]
-        pure bettyShippingInfo
+
     return ()
 
 -- ### expected error with bettyShippingInfoA HasSqlValueSyntax before we include HasSqlValueSyntax be ShippingCarrier instance ###
@@ -267,3 +276,10 @@ instance HasSqlValueSyntax be String => HasSqlValueSyntax be ShippingCarrier whe
 
 instance FromBackendRow Sqlite ShippingCarrier where
   fromBackendRow = read . unpack <$> fromBackendRow
+
+-- insertB = do
+  
+--     return ()
+-- print jamesOrder1
+-- print bettyOrder1
+-- print jamesOrder2
