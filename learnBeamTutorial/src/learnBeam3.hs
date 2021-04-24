@@ -293,7 +293,29 @@ instance FromBackendRow Sqlite ShippingCarrier where
 --         _ :: (forall s'. UserT (QExpr Sqlite s')) 
 -- -> QExpr Sqlite s Bool
 
-deleteA = do
+bettySelect =  (all_ (shoppingCartDb ^. shoppingCartUsers))
+selectAll  =  (all_ (shoppingCartDb ^. shoppingCartUsers))
+
+
+selectOne = do 
+    let bettyId = UserId "betty@example.com" :: UserId
     conn <- open "shoppingcart3.db"
-    runBeamSqliteDebug putStrLn conn $runDelete $ delete (shoppingCartDb ^. shoppingCartUsers) (_)
-    return ()
+    betty <- runBeamSqliteDebug putStrLn conn $ runSelectReturningList $ select $ do 
+                person <- all_ (shoppingCartDb ^. shoppingCartUsers)
+                guard_ (_userEmail person ==. val_ "betty@example.com") 
+                pure person
+    return betty
+
+
+-- a good suggestion from the channel 
+-- Never used beam before, but would const (val_ True) fit your hole?
+
+
+-- deleteAll = do
+--     conn <- open "shoppingcart3.db"
+--     betty <- runBeamSqliteDebug putStrLn conn $ runSelectReturningList $ select selectAll
+--     -- runBeamSqliteDebug putStrLn conn $ runDelete $ 
+--     --  delete (shoppingCartDb ^. shoppingCartUserAddresses)
+--     --      (\address -> address ^. addressCity ==. "Houston" &&.
+--     --                   _addressForUser address `references_` betty)
+--     return ()
