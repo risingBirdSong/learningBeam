@@ -12,6 +12,8 @@ import Database.Beam.Sqlite
 import GHC.Int
 import Database.Beam.Backend.SQL
 
+import Data.Char
+
 import qualified Data.Vector as V
 
 import Data.Text
@@ -283,3 +285,15 @@ instance FromBackendRow Sqlite ShippingCarrier where
 -- print jamesOrder1
 -- print bettyOrder1
 -- print jamesOrder2
+
+-- deleting 
+
+
+-- • Found hole:
+--         _ :: (forall s'. UserT (QExpr Sqlite s')) 
+-- -> QExpr Sqlite s Bool
+
+deleteA = do
+    conn <- open "shoppingcart3.db"
+    runBeamSqliteDebug putStrLn conn $runDelete $ delete (shoppingCartDb ^. shoppingCartUsers) (_)
+    return ()
