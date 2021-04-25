@@ -2,6 +2,8 @@
 {-# LANGUAGE DeriveGeneric , GADTs , OverloadedStrings , FlexibleContexts , FlexibleInstances , TypeFamilies , TypeApplications , DeriveAnyClass #-}
 {-# LANGUAGE StandaloneDeriving , TypeSynonymInstances , MultiParamTypeClasses #-}
 {-#  LANGUAGE ImpredicativeTypes , NoMonomorphismRestriction, UndecidableInstances #-}
+{-# LANGUAGE RankNTypes #-}
+
 
 {-# OPTIONS_GHC -Wno-deferred-type-errors #-}
 module Learnbeam where
@@ -317,4 +319,27 @@ deleteUsers = do
      delete (shoppingCartDb ^. shoppingCartUsers) (const (val_ True))
     return ()
 
+-- great and simple answer... i need to study forall
+
+--great article on forall
+-- https://stackoverflow.com/questions/3071136/what-does-the-forall-keyword-in-haskell-ghc-do
+
+putInList x = [x]
+-- liftTup :: (t -> b) -> (t, t) -> (b, b)
+-- liftTup liftFunc (a, b) = (liftFunc a, liftFunc b)
+
+-- liftTup putInList (1,"a")
+
+-- <interactive>:4:20: error:
+--     • No instance for (Num [Char]) arising from the literal ‘1’
+--     • In the expression: 1
+--       In the second argument of ‘liftTup’, namely ‘(1, "a")’
+--       In the expression: liftTup putInList (1, "a")
+
 -- deleteAddresses
+
+liftTup :: (forall x. x -> f x) -> (a, b) -> (f a, f b)
+liftTup liftFunc (t, v) = (liftFunc t, liftFunc v)
+
+-- *Learnbeam> liftTup putInList (3,"a")
+-- ([3],["a"])
