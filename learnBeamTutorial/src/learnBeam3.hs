@@ -316,10 +316,41 @@ selectOne = do
 deleteUsers = do
     conn <- open "shoppingcart3.db"
     runBeamSqliteDebug putStrLn conn $ runDelete $ 
-     delete (shoppingCartDb ^. shoppingCartUsers) (const (val_ True))
+      delete (shoppingCartDb ^. shoppingCartUsers) (const (val_ True))
     return ()
 
+deleteAddresses = do 
+  conn <- open "shoppingcart3.db"
+  runBeamSqliteDebug putStrLn conn $ runDelete $ 
+    delete (shoppingCartDb ^. shoppingCartUserAddresses) (const (val_ True))
+  return ()
 -- great and simple answer... i need to study forall
+
+deleteProducts = do 
+  conn <- open "shoppingcart3.db"
+  runBeamSqliteDebug putStrLn conn $ runDelete $ 
+    delete (shoppingCartDb ^. shoppingCartProducts) (const (val_ True))
+  return ()
+
+deleteOrders = do 
+  conn <- open "shoppingcart3.db"
+  runBeamSqliteDebug putStrLn conn $ runDelete $
+    delete (shoppingCartDb ^. shoppingCartOrders) (const (val_ True))
+  return ()
+
+deleteShippingInfo = do
+  conn <- open "shoppingcart3.db"
+  runBeamSqliteDebug putStrLn conn $ runDelete $
+    delete (shoppingCartDb ^. shoppingCartShippingInfos) (const (val_ True))
+  return ()
+
+deleteLineItems = do 
+  conn <- open "shoppingcart3.db"
+  runBeamSqliteDebug putStrLn conn $ runDelete $
+    delete (shoppingCartDb ^. shoppingCartLineItems) (const (val_ True))
+  return ()
+
+-- shoppingCartShippingInfos , shoppingCartLineItems
 
 --great article on forall
 -- https://stackoverflow.com/questions/3071136/what-does-the-forall-keyword-in-haskell-ghc-do
@@ -338,6 +369,7 @@ putInList x = [x]
 
 -- deleteAddresses
 
+-- this is an example of rankNType use case which means x can be any suitable type
 liftTup :: (forall x. x -> f x) -> (a, b) -> (f a, f b)
 liftTup liftFunc (t, v) = (liftFunc t, liftFunc v)
 
