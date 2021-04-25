@@ -311,11 +311,10 @@ selectOne = do
 -- Never used beam before, but would const (val_ True) fit your hole?
 
 
--- deleteAll = do
---     conn <- open "shoppingcart3.db"
---     betty <- runBeamSqliteDebug putStrLn conn $ runSelectReturningList $ select selectAll
---     -- runBeamSqliteDebug putStrLn conn $ runDelete $ 
---     --  delete (shoppingCartDb ^. shoppingCartUserAddresses)
---     --      (\address -> address ^. addressCity ==. "Houston" &&.
---     --                   _addressForUser address `references_` betty)
---     return ()
+deleteUsers = do
+    conn <- open "shoppingcart3.db"
+    runBeamSqliteDebug putStrLn conn $ runDelete $ 
+     delete (shoppingCartDb ^. shoppingCartUsers) (const (val_ True))
+    return ()
+
+-- deleteAddresses
