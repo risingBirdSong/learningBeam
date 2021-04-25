@@ -302,17 +302,34 @@ selectAll  =  (all_ (shoppingCartDb ^. shoppingCartUsers))
 selectOneUser email = do 
     -- let bettyId = UserId "betty@example.com" :: UserId
     conn <- open "shoppingcart3.db"
-    user' <- runBeamSqliteDebug putStrLn conn $ runSelectReturningList $ select $ do 
+    [user'] <- runBeamSqliteDebug putStrLn conn $ runSelectReturningList $ select $ do 
                 users <- all_ (shoppingCartDb ^. shoppingCartUsers)
                 guard_ (_userEmail users ==. val_ email) 
                 pure users
     return user'
 
--- selectOneAddress address = do 
+-- With values: [SQLText "betty@example.com"]
+selectOneAddress email = do
+    conn <- open "shoppingcart2.db"
+    search <- selectOneUser (pack email)
+    usersAndRelatedAddresses <-  runBeamSqliteDebug putStrLn conn $
+        runSelectReturningList $ select $ do
+            user <- all_ (shoppingCartDb ^. shoppingCartUsers)
+            address <- all_ (shoppingCartDb ^. shoppingCartUserAddresses)
+            guard_ (address ^. addressForUserId ==. user ^. userEmail)
+            guard_ (user ^. userEmail ==. (val_ (search ^. userEmail)))
+            pure (user, address)
+    mapM_ print usersAndRelatedAddresses
+
+-- selectOneAddress email = do 
 --   conn <- open "shoppingcart3.db"
---   address <- runBeamSqliteDebug putStrLd conn $ do
---       address' <- all_ (shoppingCarDb ^. shoppingCartUserAddresses)
---       guard_ (_)
+--   runBeamSqliteDebug putStrLn conn $ do
+--       user' <- runBeamSqliteDebug putStrLn conn $ runSelectReturningList $ select $ do 
+--             users <- all_ (shoppingCartDb ^. shoppingCartUsers)
+--             guard_ (_userEmail users ==. val_ email) 
+--       addresses <- all_ (shoppingCartDb ^. shoppingCartUserAddresses) 
+--       guard_ (addresses ^. addressForUserId ==. user ^. userEmail)
+--       return addresses
 
 
 
@@ -394,20 +411,20 @@ bettyShippingInfoDo = do
     pure bettyShippingInfo
   return ()
 
-newOrders = do
-  conn <- open "shoppingcart3.db" 
-  runBeamSqliteDebug putStrLn conn $ do 
-  [betty] <- runSelectReturningList $ selectOneUser "betty@example.com"
-  [james] <- runSelectReturningList $ selectOneUser "james@example.com"
-  [ jamesOrder1, bettyOrder1, jamesOrder2 ] <-
-    runBeamSqliteDebug putStrLn conn $ do
-      runInsertReturningList $
-        insertReturning (shoppingCartDb ^. shoppingCartOrders) $
-        insertExpressions $
-        [ Order default_ currentTimestamp_ (val_ (pk james)) (val_ (pk jamesAddress1)) nothing_
-        , Order default_ currentTimestamp_ (val_ (pk betty)) (val_ (pk bettyAddress1)) (just_ (val_ (pk bettyShippingInfo)))
-        , Order default_ currentTimestamp_ (val_ (pk james)) (val_ (pk jamesAddress1)) nothing_ ]
-  return ()
+-- newOrders = do
+--   conn <- open "shoppingcart3.db" 
+--   runBeamSqliteDebug putStrLn conn $ do 
+--   [betty] <- runSelectReturningList $ selectOneUser "betty@example.com"
+--   [james] <- runSelectReturningList $ selectOneUser "james@example.com"
+--   [ jamesOrder1, bettyOrder1, jamesOrder2 ] <-
+--     runBeamSqliteDebug putStrLn conn $ do
+--       runInsertReturningList $
+--         insertReturning (shoppingCartDb ^. shoppingCartOrders) $
+--         insertExpressions $
+--         [ Order default_ currentTimestamp_ (val_ (pk james)) (val_ (pk jamesAddress1)) nothing_
+--         , Order default_ currentTimestamp_ (val_ (pk betty)) (val_ (pk bettyAddress1)) (just_ (val_ (pk bettyShippingInfo)))
+--         , Order default_ currentTimestamp_ (val_ (pk james)) (val_ (pk jamesAddress1)) nothing_ ]
+--   return ()
 --   print jamesOrder1
 --   print bettyOrder1
 --   print jamesOrder2
