@@ -309,7 +309,7 @@ selectOneUser email = do
     return user'
 
 -- With values: [SQLText "betty@example.com"]
-selectOneAddress email = do
+selectUsersAddress email = do
     conn <- open "shoppingcart2.db"
     search <- selectOneUser (pack email)
     usersAndRelatedAddresses <-  runBeamSqliteDebug putStrLn conn $
@@ -373,6 +373,8 @@ deleteLineItems = do
   runBeamSqliteDebug putStrLn conn $ runDelete $
     delete (shoppingCartDb ^. shoppingCartLineItems) (const (val_ True))
   return ()
+
+deleteAll = mapM_ (id) [deleteUsers, deleteAddresses, deleteProducts, deleteOrders, deleteShippingInfo, deleteLineItems]
 
 -- shoppingCartShippingInfos , shoppingCartLineItems
 
