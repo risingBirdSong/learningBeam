@@ -299,14 +299,21 @@ bettySelect =  (all_ (shoppingCartDb ^. shoppingCartUsers))
 selectAll  =  (all_ (shoppingCartDb ^. shoppingCartUsers))
 
 
-selectOne = do 
-    let bettyId = UserId "betty@example.com" :: UserId
+selectOneUser email = do 
+    -- let bettyId = UserId "betty@example.com" :: UserId
     conn <- open "shoppingcart3.db"
-    betty <- runBeamSqliteDebug putStrLn conn $ runSelectReturningList $ select $ do 
-                person <- all_ (shoppingCartDb ^. shoppingCartUsers)
-                guard_ (_userEmail person ==. val_ "betty@example.com") 
-                pure person
-    return betty
+    user' <- runBeamSqliteDebug putStrLn conn $ runSelectReturningList $ select $ do 
+                users <- all_ (shoppingCartDb ^. shoppingCartUsers)
+                guard_ (_userEmail users ==. val_ email) 
+                pure users
+    return user'
+
+-- selectOneAddress address = do 
+--   conn <- open "shoppingcart3.db"
+--   address <- runBeamSqliteDebug putStrLd conn $ do
+--       address' <- all_ (shoppingCarDb ^. shoppingCartUserAddresses)
+--       guard_ (_)
+
 
 
 -- a good suggestion from the channel 
@@ -375,3 +382,32 @@ liftTup liftFunc (t, v) = (liftFunc t, liftFunc v)
 
 -- *Learnbeam> liftTup putInList (3,"a")
 -- ([3],["a"])
+
+
+bettyShippingInfoDo = do
+  conn <- open "shoppingcart3.db" 
+  bettyShippingInfo <- runBeamSqliteDebug putStrLn conn $ do
+    [bettyShippingInfo] <-
+      runInsertReturningList $
+      insertReturning (shoppingCartDb ^. shoppingCartShippingInfos) $
+      insertExpressions [ ShippingInfo default_ (val_ USPS) (val_ "12345790ABCDEFGHI") ]
+    pure bettyShippingInfo
+  return ()
+
+newOrders = do
+  conn <- open "shoppingcart3.db" 
+  runBeamSqliteDebug putStrLn conn $ do 
+  [betty] <- runSelectReturningList $ selectOneUser "betty@example.com"
+  [james] <- runSelectReturningList $ selectOneUser "james@example.com"
+  [ jamesOrder1, bettyOrder1, jamesOrder2 ] <-
+    runBeamSqliteDebug putStrLn conn $ do
+      runInsertReturningList $
+        insertReturning (shoppingCartDb ^. shoppingCartOrders) $
+        insertExpressions $
+        [ Order default_ currentTimestamp_ (val_ (pk james)) (val_ (pk jamesAddress1)) nothing_
+        , Order default_ currentTimestamp_ (val_ (pk betty)) (val_ (pk bettyAddress1)) (just_ (val_ (pk bettyShippingInfo)))
+        , Order default_ currentTimestamp_ (val_ (pk james)) (val_ (pk jamesAddress1)) nothing_ ]
+  return ()
+--   print jamesOrder1
+--   print bettyOrder1
+--   print jamesOrder2
