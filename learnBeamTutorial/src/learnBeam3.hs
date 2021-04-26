@@ -218,6 +218,7 @@ insertA = do
                , Product default_ (val_ "Math Textbook") (val_ "Contains a lot of important math theorems and formulae") (val_ 2500)
                , Product default_ (val_ "Intro to Haskell") (val_ "Learn the best programming language in the world") (val_ 3000)
                , Product default_ (val_ "Suitcase") "A hard durable suitcase" 15000 ]
+
     bettyShippingInfo <- runBeamSqliteDebug putStrLn conn $ do
         [bettyShippingInfo] <- runInsertReturningList $
             insertReturning (shoppingCartDb ^. shoppingCartShippingInfos) $
@@ -244,7 +245,20 @@ insertA = do
                 , Order default_ currentTimestamp_ (val_ (pk betty)) (val_ (pk bettyAddress1)) (just_ (val_ (pk bettyShippingInfo)))
                 , Order default_ currentTimestamp_ (val_ (pk james)) (val_ (pk jamesAddress1)) nothing_ ]
 
-    return  ()
+
+    let lineItems = [ LineItem (pk jamesOrder1) (pk redBall) 10
+                  , LineItem (pk jamesOrder1) (pk mathTextbook) 1
+                  , LineItem (pk jamesOrder1) (pk introToHaskell) 4
+
+                  , LineItem (pk bettyOrder1) (pk mathTextbook) 3
+                  , LineItem (pk bettyOrder1) (pk introToHaskell) 3
+
+                  , LineItem (pk jamesOrder2) (pk mathTextbook) 1 ]
+
+    runBeamSqliteDebug putStrLn conn $ do
+        runInsert $ insert (shoppingCartDb ^. shoppingCartLineItems) $
+          insertValues lineItems
+        return ()
     
 
 -- Marshalling a custom type
@@ -478,6 +492,7 @@ liftTup liftFunc (t, v) = (liftFunc t, liftFunc v)
 -- --   print bettyOrder1
 -- --   print jamesOrder2
 
+
 userAndOrders email = do
   conn <- open "shoppingcart3.db" 
   runBeamSqliteDebug putStrLn conn $
@@ -490,9 +505,56 @@ userAndOrders email = do
 
 usersAndOrders = do
   conn <- open "shoppingcart3.db" 
-  runBeamSqliteDebug putStrLn conn $
+  runBeamSqlite conn $
     runSelectReturningList $
     select $ do
       user  <- all_ (shoppingCartDb ^. shoppingCartUsers)
       order <- leftJoin_ (all_ (shoppingCartDb ^. shoppingCartOrders)) (\order -> _orderForUser order `references_` user)
       pure (user, order)
+
+usersWithNoOrdersDo = do 
+  conn <- open "shoppingcart3.db" 
+  usersWithNoOrders <-
+    runBeamSqlite conn $
+      runSelectReturningList $
+      select $ do
+        user  <- all_ (shoppingCartDb ^. shoppingCartUsers)
+        order <- leftJoin_ (all_ (shoppingCartDb ^. shoppingCartOrders)) (\order -> _orderForUser order `references_` user)
+        guard_ (isNothing_ order)
+        pure user
+  mapM_ print usersWithNoOrders
+
+ordersWithCostOrderedDo = do
+  conn <- open "shoppingcart3.db" 
+  ordersWithCostOrdered <- runBeamSqlite conn $
+    runSelectReturningList $
+    select $
+    orderBy_ (\(order, total) -> desc_ total) $
+    aggregate_ (\(order, lineItem, product) ->
+                    (group_ order, sum_ (lineItem ^. lineItemQuantity * product ^. productPrice))) $
+    do lineItem <- all_ (shoppingCartDb ^. shoppingCartLineItems)
+       order   <- related_ (shoppingCartDb ^. shoppingCartOrders) (_lineItemInOrder lineItem)
+       product <- related_ (shoppingCartDb ^. shoppingCartProducts) (_lineItemForProduct lineItem)
+       pure (order, lineItem, product)
+  mapM_ print ordersWithCostOrdered
+
+
+allUsersAndTotalsDo = do
+  conn <- open "shoppingcart3.db"  
+  allUsersAndTotals <-
+    runBeamSqlite conn $
+      runSelectReturningList $
+      select $
+      orderBy_ (\(user, total) -> desc_ total) $
+      aggregate_ (\(user, lineItem, product) ->
+                    (group_ user, sum_ (maybe_ 0 id (_lineItemQuantity lineItem) * maybe_ 0 id (product ^. productPrice)))) $
+      do  user     <- all_ (shoppingCartDb ^. shoppingCartUsers)
+          order    <- leftJoin_ (all_ (shoppingCartDb ^. shoppingCartOrders))
+                                (\order -> _orderForUser order `references_` user)
+          lineItem <- leftJoin_ (all_ (shoppingCartDb ^. shoppingCartLineItems))
+                                (\lineItem -> maybe_ (val_ False) (\order -> _lineItemInOrder lineItem `references_` order) order)
+          product  <- leftJoin_ (all_ (shoppingCartDb ^. shoppingCartProducts))
+                                (\product -> maybe_ (val_ False) (\lineItem -> _lineItemForProduct lineItem `references_` product) lineItem)
+          pure (user, lineItem, product)
+
+  mapM_ print allUsersAndTotals
