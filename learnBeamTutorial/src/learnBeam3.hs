@@ -582,3 +582,37 @@ allUsersAndTotals2Do = do
           pure (user, lineItem, product)
 
   mapM_ print allUsersAndTotals2
+
+allUnshippedOrdersDo = do
+  conn <- open "shoppingcart3.db"    
+  allUnshippedOrders <- runBeamSqliteDebug putStrLn conn $
+    runSelectReturningList $
+    select $
+    filter_ (isNothing_ . _orderShippingInfo) $
+    all_ (shoppingCartDb ^. shoppingCartOrders)
+  mapM_ print allUnshippedOrders
+shippingInformationByUserDo = do
+  conn <- open "shoppingcart3.db"   
+  shippingInformationByUser <-
+    runBeamSqliteDebug putStrLn conn $ runSelectReturningList $ select $
+      do  user <- all_ (shoppingCartDb ^. shoppingCartUsers)
+          (userEmail, unshippedCount) <-
+            aggregate_ (\(userEmail, order) -> (group_ userEmail, as_ @Int32 countAll_)) $
+            do    user  <- all_ (shoppingCartDb ^. shoppingCartUsers)
+                  order <- leftJoin_ (all_ (shoppingCartDb ^. shoppingCartOrders))
+                                    (\order -> _orderForUser order `references_` user &&. isNothing_ (_orderShippingInfo order))
+                  pure (pk user, order)
+
+          guard_ (userEmail `references_` user)
+
+          (userEmail, shippedCount) <-
+            aggregate_ (\(userEmail, order) -> (group_ userEmail, as_ @Int32 countAll_)) $
+            do  user  <- all_ (shoppingCartDb ^. shoppingCartUsers)
+                order <- leftJoin_ (all_ (shoppingCartDb ^. shoppingCartOrders))
+                                  (\order -> _orderForUser order `references_` user &&. isJust_ (_orderShippingInfo order))
+                pure (pk user, order)
+          guard_ (userEmail `references_` user)
+
+          pure (user, unshippedCount, shippedCount)
+
+  mapM_ print shippingInformationByUser
