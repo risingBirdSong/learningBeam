@@ -350,14 +350,13 @@ getUserAndRelated email = do
   search <- selectOneUser (pack email)
   -- this pattern match fails! [stuff] <- runBeamSqliteDebug putStrLn conn $ runSelectReturningList $  select $ do
   stuff <- runBeamSqliteDebug putStrLn conn $ runSelectReturningList $  select $ do
+    user' <- all_ (shoppingCartDb ^. shoppingCartUsers)
     address' <- all_ (shoppingCartDb ^. shoppingCartUserAddresses)
-    user' <- related_ (shoppingCartDb ^. shoppingCartUsers) (_addressForUser address')
-    -- products' <- all_ (shoppingCartDb ^. shoppingCartProducts)
-    -- order' <- all_ (ShoppingCartDb ^. shoppingCartOrders)
-    -- print address'
+    -- product' <- all_ (shoppingCartDb ^. shoppingCartProducts)
     guard_ (user' ^. userEmail ==. (val_ (search ^. userEmail)))
-    return (user')
-  return stuff
+    -- print address'
+    return (user', address')
+  return (stuff)
 
 -- [User {_userEmail = "betty@example.com", _userFirstName = "Betty", _userLastName = "Jones", _userPassword = "82b054bd83ffad9b6cf8bdb98ce3cc2f"},
 -- User {_userEmail = "betty@example.com", _userFirstName = "Betty", _userLastName = "Jones", _userPassword = "82b054bd83ffad9b6cf8bdb98ce3cc2f"},User {_userEmail = "betty@example.com", _userFirstName = "Betty", _userLastName = "Jones", _userPassword = "82b054bd83ffad9b6cf8bdb98ce3cc2f"},User {_userEmail = "betty@example.com", _userFirstName = "Betty", _userLastName = "Jones", _userPassword = "82b054bd83ffad9b6cf8bdb98ce3cc2f"}]
