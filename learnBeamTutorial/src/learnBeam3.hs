@@ -509,6 +509,9 @@ usersAndOrders = do
     runSelectReturningList $
     select $ do
       user  <- all_ (shoppingCartDb ^. shoppingCartUsers)
+      -- `references_` user observation in the line below
+      -- it in the order table, there are no direct references to User, the closest is reference to address, which directly 
+      -- references User, so I think Beam is able to see this indirect relationship and do the right thing... it is interesting
       order <- leftJoin_ (all_ (shoppingCartDb ^. shoppingCartOrders)) (\order -> _orderForUser order `references_` user)
       pure (user, order)
 
@@ -558,3 +561,24 @@ allUsersAndTotalsDo = do
           pure (user, lineItem, product)
 
   mapM_ print allUsersAndTotals
+
+-- more efficient 
+allUsersAndTotals2Do = do
+  conn <- open "shoppingcart3.db"   
+  allUsersAndTotals2 <-
+    runBeamSqliteDebug putStrLn conn $
+      runSelectReturningList $
+      select $
+      orderBy_ (\(user, total) -> desc_ total) $
+      aggregate_ (\(user, lineItem, product) ->
+                    (group_ user, sum_ (maybe_ 0 id (_lineItemQuantity lineItem) * maybe_ 0 id (product ^. productPrice)))) $
+      do  user     <- all_ (shoppingCartDb ^. shoppingCartUsers)
+          order    <- leftJoin_ (all_ (shoppingCartDb ^. shoppingCartOrders))
+                                (\order -> _orderForUser order `references_` user)
+          lineItem <- leftJoin_' (all_ (shoppingCartDb ^. shoppingCartLineItems))
+                                  (\lineItem -> just_ (_lineItemInOrder lineItem) ==?. pk order)
+          product  <- leftJoin_' (all_ (shoppingCartDb ^. shoppingCartProducts))
+                                  (\product -> _lineItemForProduct lineItem ==?. just_ (pk product))
+          pure (user, lineItem, product)
+
+  mapM_ print allUsersAndTotals2
