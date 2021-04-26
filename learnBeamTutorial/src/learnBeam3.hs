@@ -345,6 +345,32 @@ getUserAndAddress email = do
             pure (user, address)
     return (Prelude.head usersAndRelatedAddresses)
 
+getUserAndRelated email = do
+  conn <- open "shoppingcart2.db"
+  search <- selectOneUser (pack email)
+  -- this pattern match fails! [stuff] <- runBeamSqliteDebug putStrLn conn $ runSelectReturningList $  select $ do
+  stuff <- runBeamSqliteDebug putStrLn conn $ runSelectReturningList $  select $ do
+    address' <- all_ (shoppingCartDb ^. shoppingCartUserAddresses)
+    user' <- related_ (shoppingCartDb ^. shoppingCartUsers) (_addressForUser address')
+    -- products' <- all_ (shoppingCartDb ^. shoppingCartProducts)
+    -- order' <- all_ (ShoppingCartDb ^. shoppingCartOrders)
+    -- print address'
+    guard_ (user' ^. userEmail ==. (val_ (search ^. userEmail)))
+    return (user')
+  return stuff
+
+-- [User {_userEmail = "betty@example.com", _userFirstName = "Betty", _userLastName = "Jones", _userPassword = "82b054bd83ffad9b6cf8bdb98ce3cc2f"},
+-- User {_userEmail = "betty@example.com", _userFirstName = "Betty", _userLastName = "Jones", _userPassword = "82b054bd83ffad9b6cf8bdb98ce3cc2f"},User {_userEmail = "betty@example.com", _userFirstName = "Betty", _userLastName = "Jones", _userPassword = "82b054bd83ffad9b6cf8bdb98ce3cc2f"},User {_userEmail = "betty@example.com", _userFirstName = "Betty", _userLastName = "Jones", _userPassword = "82b054bd83ffad9b6cf8bdb98ce3cc2f"}]
+
+
+  -- return ()
+-- { _shoppingCartUsers         :: f (TableEntity UserT)
+--                       , _shoppingCartUserAddresses :: f (TableEntity AddressT)
+--                       , _shoppingCartProducts      :: f (TableEntity ProductT)
+--                       , _shoppingCartOrders        :: f (TableEntity OrderT)
+--                       , _shoppingCartShippingInfos :: f (TableEntity ShippingInfoT)
+--                       , _shoppingCartLineItems     :: f (TableEntity LineItemT) }
+
 
 -- selectOneAddress email = do 
 --   conn <- open "shoppingcart3.db"
@@ -450,7 +476,7 @@ newOrders = do
       runInsertReturningList $
         insertReturning (shoppingCartDb ^. shoppingCartOrders) $
         insertExpressions $
-        [ Order default_ currentTimestamp_ (val_ (pk james)) (val_ (pk jamesAddress1)) nothing_ ]
+        [ Order default_ currentTimestamp_ (val_ (pk james)) (val_ (pk jamesAddress1)) (nothing_ ) ]
           -- , Order default_ currentTimestamp_ (val_ (pk james)) (val_ (pk _)) nothing_ ]
           -- [ Order default_ currentTimestamp_ (val_ (pk james)) (val_ (pk jamesAddress1)) nothing_
           -- , Order default_ currentTimestamp_ (val_ (pk betty)) (val_ (pk bettyAddress1)) (just_ (val_ (pk bettyShippingInfo)))
